@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Погоня за пиццей — игра для доски</title>
+<style>
+  :root { --ink:#182d36; --paper:#faf8f2; --line:#b7b9ac; --teal:#095d59; --light:#e4eee7; --warm:#fff0d2; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; color:var(--ink); background:var(--paper); font-family:"Source Sans 3","Segoe UI",Arial,sans-serif; font-size:clamp(17px,1.55vw,26px); }
+  .shell { width:min(95%,1580px); margin:auto; padding:clamp(14px,2.3vh,30px) 0 22px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:clamp(10px,1.9vh,22px); border-bottom:2px solid var(--ink); }
+  h1,h2,h3,p { margin:0; }
+  h1 { font-size:clamp(30px,3.9vw,66px); line-height:1.06; letter-spacing:-.045em; }
+  h2 { font-size:clamp(28px,3.15vw,55px); line-height:1.08; letter-spacing:-.04em; }
+  h3 { font-size:clamp(21px,2.1vw,35px); line-height:1.18; }
+  .context { font-size:.8em; font-weight:650; color:#455953; margin-bottom:.3em; }
+  p { line-height:1.4; }
+  button { appearance:none; border:2px solid #9baba2; border-radius:9px; background:#fffef9; color:var(--ink); font:inherit; font-weight:650; padding:.57em .83em; min-height:48px; cursor:pointer; touch-action:manipulation; }
+  button:hover { background:#e7ede4; border-color:var(--teal); }
+  button:active { transform:translateY(1px); }
+  button:focus-visible,canvas:focus-visible { outline:4px solid #cc6224; outline-offset:3px; }
+  .primary { color:white; background:var(--teal); border-color:var(--teal); }
+  .primary:hover { color:white; background:#064846; }
+  .quiet { font-size:.88em; }
+  #play { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr); align-items:center; gap:3.7%; margin-top:clamp(12px,2.4vh,29px); }
+  .field { background:#123b3e; border-radius:12px; border:3px solid #173c3e; overflow:hidden; }
+  .scorebar { display:flex; justify-content:space-between; align-items:center; background:#15383b; color:#f9f7e9; padding:.24em .8em; gap:.8em; }
+  .scorebar strong { font-size:1.08em; }
+  #score { display:inline-block; padding-left:.2em; color:#ffda83; font-weight:750; font-size:1.58em; font-variant-numeric:tabular-nums; }
+  #play-status { font-size:.82em; color:#e1f1e1; text-align:right; }
+  canvas { display:block; width:100%; aspect-ratio:8/5; image-rendering:pixelated; cursor:crosshair; touch-action:none; }
+  .side { display:grid; gap:clamp(11px,2.05vh,24px); }
+  .buttons { display:flex; flex-wrap:wrap; gap:8px; }
+  .hint { font-size:.84em; color:#405958; }
+  .screen-top { display:flex; justify-content:space-between; align-items:start; gap:12px; margin:clamp(14px,2.5vh,32px) 0 .85em; }
+  .screen-top p { margin-top:.3em; }
+  .builder { display:grid; grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr); gap:clamp(16px,3vw,50px); align-items:start; }
+  .palette, .script { padding:clamp(14px,1.5vw,25px); border:2px solid var(--line); border-radius:12px; background:#fffefa; }
+  .palette h3,.script h3 { margin-bottom:.6em; }
+  .palette button { display:block; width:100%; text-align:left; border-color:#809e92; background:var(--light); margin-top:.35em; }
+  .palette button:hover { background:#d1e6da; }
+  .rule { background:#fae6b8; border:1px solid #c3a662; border-radius:5px; padding:.5em .65em; font-weight:700; }
+  #sequence { list-style:none; counter-reset:seq; padding:0; margin:.48em 0; }
+  #sequence li { display:flex; align-items:center; gap:.55em; padding:.23em .28em .23em .55em; margin:.3em 0; border-radius:5px; background:var(--light); line-height:1.2; }
+  #sequence li::before { counter-increment:seq; content:counter(seq); color:var(--teal); font-weight:750; }
+  #sequence li button { margin-left:auto; min-width:48px; min-height:48px; padding:.08em .4em; border:0; background:transparent; font-size:1.4em; line-height:1; }
+  #sequence li button:hover { background:#cee1d8; }
+  .edit-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:.72em; }
+  #draft-notice { font-size:.8em; min-height:1.4em; margin-top:.4em; color:#405958; }
+  .chart { display:block; margin:auto; width:100%; height:min(52vh,590px); min-height:250px; color:var(--ink); }
+  .chart .wire { fill:none; stroke:var(--teal); stroke-width:2.2; marker-end:url(#arrow-tip); }
+  .chart .node { fill:#e5eee7; stroke:var(--teal); stroke-width:1.6; }
+  .chart text { fill:var(--ink); font-size:18px; font-weight:650; text-anchor:middle; dominant-baseline:central; }
+  .chart .question { fill:var(--warm); }
+  .chart .tag { fill:var(--paper); stroke:#9aa99d; stroke-width:1; }
+  .chart [data-answer] { cursor:pointer; touch-action:manipulation; }
+  .chart [data-answer]:focus-visible { outline:3px solid #cc6224; outline-offset:2px; }
+  .chart [data-answer]:hover .node,.chart [data-answer]:hover .tag { stroke-width:3; }
+  .chart-controls { display:flex; justify-content:center; gap:.5em; flex-wrap:wrap; margin-top:.55em; }
+  @media (max-width:760px) { #play,.builder { grid-template-columns:1fr; } .side { margin-top:10px; } .screen-top { flex-direction:column; } #play { gap:10px; } .shell { width:94%; } }
+  @media (min-width:761px) and (max-height:700px) { .shell { padding-top:9px; } header { padding-bottom:8px; } #play { grid-template-columns:minmax(0,1.45fr) minmax(250px,1fr); margin-top:10px; } .side { gap:10px; } .context { margin-bottom:.1em; } }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <div><p class="context">Билет в будущее</p><h1>Погоня за пиццей</h1></div>
+    <button id="full" class="quiet" type="button">На весь экран</button>
+  </header>
+  <section id="play" aria-label="Игра">
+    <div class="field">
+      <div class="scorebar"><strong>Счёт <output id="score" aria-live="off">0</output></strong><span id="play-status">Исходная игра</span></div>
+      <canvas id="field" width="192" height="120" tabindex="0" aria-label="Игровое поле. Коснитесь клетки или используйте стрелки для движения робота.">Для игры нужен браузер с поддержкой Canvas.</canvas>
+    </div>
+    <div class="side">
+      <h2 id="challenge">Сколько очков даст один кусок?</h2>
+      <p id="instructions">Коснись кусочка пиццы. Когда робот доберётся до него, убери руку и посмотри на счёт.</p>
+      <div class="buttons"><button id="pause" type="button">Пауза</button><button id="restart" type="button">Сначала</button><button id="step" type="button" hidden>Одна проверка</button></div>
+      <div class="buttons"><button id="edit-rule" class="primary" type="button">Изменить правило</button><button id="open-chart" type="button">Блок-схема</button></div>
+      <p class="hint">Для движения коснись любой клетки или нажимай стрелки на клавиатуре.</p>
+    </div>
+  </section>
+  <section id="editor" aria-label="Редактор правила" hidden>
+    <div class="screen-top">
+      <div><h2 tabindex="-1" id="edit-title">Что делать при касании?</h2><p>Коснись команды, чтобы добавить её в правило.</p></div>
+      <button id="cancel" class="quiet" type="button">Назад к игре</button>
+    </div>
+    <div class="builder">
+      <section class="palette" aria-label="Доступные команды">
+        <h3>Команды</h3>
+        <button type="button" data-command="one">Прибавить 1 очко</button>
+        <button type="button" data-command="move">Перенести пиццу</button>
+        <button type="button" data-command="hide">Убрать пиццу</button>
+        <button type="button" data-command="two">Прибавить 2 очка</button>
+      </section>
+      <section class="script" aria-label="Правило игры">
+        <h3>Наше правило</h3>
+        <p class="rule">Если робот касается пиццы</p>
+        <ol id="sequence"></ol>
+        <p id="empty" class="hint" hidden>Пока действий нет.</p>
+        <div class="edit-actions"><button id="run" type="button" class="primary">Запустить игру</button><button type="button" class="quiet" id="restore">Исходное правило</button></div>
+        <p id="draft-notice" role="status"></p>
+      </section>
+    </div>
+  </section>
+  <section id="chart-view" aria-label="Блок-схема" hidden>
+    <div class="screen-top">
+      <div><h2 id="chart-title" tabindex="-1">Блок-схема одной проверки</h2><p>Предложи подпись, потом коснись фигуры или знака вопроса.</p></div>
+      <button id="close-chart" class="quiet" type="button">Назад к игре</button>
+    </div>
+    <svg class="chart" viewBox="102 -2 540 344" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Условие о касании и две ветки алгоритма">
+      <defs><marker id="arrow-tip" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#095d59"/></marker></defs>
+      <path class="wire" d="M306 38 V56"/><path class="wire" d="M306 140 V165"/><path class="wire" d="M306 204 V225"/><path class="wire" d="M306 264 V295"/>
+      <path class="wire" d="M488 98 H614 V316 H444"/>
+      <rect class="node" x="168" y="2" width="276" height="36" rx="18"/><text x="306" y="20">Начало одной проверки</text>
+      <g role="button" tabindex="0" data-prompt="Вопрос" data-answer="Робот касается пиццы?" aria-label="Открыть вопрос в ромбе">
+        <polygon class="node question" points="306,56 488,98 306,140 124,98"/><text x="306" y="98">Вопрос</text>
+      </g>
+      <g role="button" tabindex="0" data-prompt="?" data-answer="да" aria-label="Открыть подпись нижней стрелки">
+        <rect x="322" y="128" width="68" height="40" fill="transparent"/><rect class="tag" x="330" y="136" width="46" height="28" rx="6"/><text x="353" y="149">?</text>
+      </g>
+      <g role="button" tabindex="0" data-prompt="?" data-answer="нет" aria-label="Открыть подпись правой стрелки">
+        <rect x="524" y="55" width="72" height="44" fill="transparent"/><rect class="tag" x="534" y="67" width="52" height="28" rx="6"/><text x="560" y="80">?</text>
+      </g>
+      <g role="button" tabindex="0" data-prompt="Первое действие" data-answer="Прибавить 1 очко" aria-label="Открыть первое действие">
+        <rect class="node" x="135" y="165" width="342" height="39" rx="3"/><text x="306" y="184">Первое действие</text>
+      </g>
+      <g role="button" tabindex="0" data-prompt="Второе действие" data-answer="Перенести пиццу" aria-label="Открыть второе действие">
+        <rect class="node" x="135" y="225" width="342" height="39" rx="3"/><text x="306" y="244">Второе действие</text>
+      </g>
+      <rect class="node" x="168" y="295" width="276" height="42" rx="21"/><text x="306" y="316">Конец этой проверки</text>
+    </svg>
+    <div class="chart-controls"><button id="chart-show" type="button">Открыть все подписи</button><button id="chart-clear" type="button">Скрыть подписи</button></div>
+  </section>
+</main>
+<script>
+"use strict";
+const byId = id => document.getElementById(id);
+const gameView = byId("play");
+const editorView = byId("editor");
+const board = byId("field");
+const ctx = board.getContext("2d");
+const tile = 24, cols = 8, rows = 5;
+const pizzaPlaces = [[6,2],[2,0],[4,4],[0,3],[6,0],[3,2],[6,4],[1,0]];
+const commands = {one:"Прибавить 1 очко",move:"Перенести пиццу",hide:"Убрать пиццу",two:"Прибавить 2 очка"};
+const colours = {k:"#102e3b", n:"#263b67", b:"#487ce0", l:"#98d9ff", w:"#fff6dc", t:"#31ada7", o:"#fb982d", y:"#ffce58", h:"#ffe49a", r:"#ba3e37", d:"#72422e"};
+const robot = [
+  "........k.......",".......ktk......","........k.......","....kkkkkkkk....",
+  "...kbbllllbbk...","..kbbllllllbbk..","..kbnkkkkkknbk..","..kbnwtnnwtnbk..",
+  "..kbnwtnnwtnbk..","..kbbnnnnnnbbk..","...kblwwwwlbk...","..kkbbbbbbbbkk..",
+  ".kllkbbttbbkllk.",".kkk.knnnnk.kkk.","....knnkknnk....","....kkkkkkkk...."
+];
+const slice = [
+  "............dddddd..",".........dddooohhod.","......dddooohhhhhood","...dddooohhhyyyyhood",
+  ".ddooohhhyyyyyyyhood","doohhhyyyyrryyyyhod.","dohyyyyyyrrryyyyhod.","dhyyyrryyyrryyyyhod.",
+  ".dyyyrrryyyyyyyhod..",".dyyyrryyyyyrryhod..","..dyyyyyyyyrrryhod..","..dyyrryyyyrryhod...",
+  "...dyrrryyyyyhod....","...dyyrryyyyhod.....","....dyyyyyyhod......","....dyyyyyhod.......",
+  ".....dyyyhod........",".....dyyhod.........","......dhod..........","......dd............"
+];
+let activeRule = ["one"], draftRule = [], edited = false, paused = false;
+let x, y, target, pizzaIndex, pizzaVisible, score;
+let lastMove = 0, lastCheck = 0, playStateBeforeEdit = false;
+function pixels(pattern, left, top) {
+  pattern.forEach((line, row) => {
+    for (let i = 0; i < line.length; i++) {
+      const colour = colours[line[i]];
+      if (colour) { ctx.fillStyle = colour; ctx.fillRect(left+i, top+row, 1, 1); }
+    }
+  });
+}
+function renderBoard() {
+  for (let row=0; row<rows; row++) {
+    for (let col=0; col<cols; col++) {
+      const left=col*tile, top=row*tile;
+      ctx.fillStyle=(col+row)%2 ? "#33676a" : "#396f6f"; ctx.fillRect(left,top,tile,tile);
+      ctx.fillStyle="#2a5a60"; ctx.fillRect(left,top+tile-1,tile,1); ctx.fillRect(left+tile-1,top,1,tile);
+      ctx.fillStyle="#477975"; ctx.fillRect(left+1,top+1,3,1); ctx.fillRect(left+1,top+1,1,3);
+    }
+  }
+  if (target && (x!==target[0] || y!==target[1])) {
+    ctx.strokeStyle="#d0f0db"; ctx.lineWidth=1; ctx.strokeRect(target[0]*tile+2.5,target[1]*tile+2.5,tile-6,tile-6);
+  }
+  const [px,py]=pizzaPlaces[pizzaIndex];
+  if (pizzaVisible) {
+    ctx.fillStyle="#27575a"; ctx.fillRect(px*tile+4,py*tile+18,15,3);
+    pixels(slice,px*tile+2,py*tile+2);
+  }
+  const overlap=pizzaVisible && x===px && y===py;
+  ctx.fillStyle="#214d56"; ctx.fillRect(x*tile+5,y*tile+19,14,2);
+  pixels(robot,x*tile+(overlap?0:4),y*tile+(overlap?7:4));
+}
+function syncUI() {
+  byId("score").textContent=score;
+  byId("play-status").textContent=(edited?"Ваше правило":"Исходная игра")+(paused?" · Пауза":"");
+  byId("pause").textContent=paused?"Продолжить":"Пауза";
+  byId("step").hidden=!paused;
+  byId("challenge").textContent=edited?"Как изменился счёт?":"Сколько очков даст один кусок?";
+  byId("instructions").textContent=edited
+    ?"Проверь ход мимо пиццы. Подбери один кусок и останься на месте. Потом доберись до второго."
+    :"Коснись кусочка пиццы. Когда робот доберётся до него, убери руку и посмотри на счёт.";
+}
+function freshRound() {
+  x=1; y=2; target=null; pizzaIndex=0; pizzaVisible=true; score=0; paused=false;
+  lastMove=lastCheck=performance.now(); syncUI(); renderBoard();
+}
+function checkRule() {
+  const [px,py]=pizzaPlaces[pizzaIndex];
+  if (!pizzaVisible || x!==px || y!==py) return;
+  for (const action of activeRule) {
+    if (action==="one") score+=1;
+    if (action==="two") score+=2;
+    if (action==="move") { pizzaIndex=(pizzaIndex+1)%pizzaPlaces.length; pizzaVisible=true; }
+    if (action==="hide") pizzaVisible=false;
+  }
+  byId("score").textContent=score; renderBoard();
+}
+function frame(now) {
+  if (!paused && !gameView.hidden) {
+    if (target && now-lastMove>=82) {
+      if (x!==target[0]) x+=Math.sign(target[0]-x);
+      else if (y!==target[1]) y+=Math.sign(target[1]-y);
+      if (x===target[0] && y===target[1]) target=null;
+      lastMove=now; renderBoard();
+    }
+    if (now-lastCheck>=480) { lastCheck=now; checkRule(); }
+  }
+  requestAnimationFrame(frame);
+}
+board.addEventListener("pointerdown", e=>{
+  if (paused) return;
+  e.preventDefault(); board.focus({preventScroll:true});
+  const rect=board.getBoundingClientRect();
+  const cx=Math.floor((e.clientX-rect.left)/rect.width*cols);
+  const cy=Math.floor((e.clientY-rect.top)/rect.height*rows);
+  target=[Math.max(0,Math.min(cols-1,cx)),Math.max(0,Math.min(rows-1,cy))];
+  renderBoard();
+});
+const arrows={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+document.addEventListener("keydown",e=>{
+  const d=arrows[e.key];
+  if (!d || gameView.hidden || e.ctrlKey || e.altKey || e.metaKey) return;
+  e.preventDefault();
+  if (paused) return;
+  target=null; x=Math.max(0,Math.min(cols-1,x+d[0])); y=Math.max(0,Math.min(rows-1,y+d[1])); renderBoard();
+});
+byId("pause").onclick=()=>{ paused=!paused; lastMove=lastCheck=performance.now(); syncUI(); };
+byId("step").onclick=()=>{ if (paused) checkRule(); };
+byId("restart").onclick=freshRound;
+function renderDraft(notice="") {
+  const list=byId("sequence"); list.replaceChildren();
+  draftRule.forEach((action,index)=>{
+    const li=document.createElement("li");
+    const label=document.createElement("span"); label.textContent=commands[action];
+    const remove=document.createElement("button"); remove.type="button"; remove.textContent="×";
+    remove.setAttribute("aria-label","Убрать команду "+(index+1)+" «"+commands[action]+"»");
+    remove.onclick=()=>{draftRule.splice(index,1); renderDraft("Команда убрана.");};
+    li.append(label,remove); list.appendChild(li);
+  });
+  byId("empty").hidden=draftRule.length!==0;
+  byId("draft-notice").textContent=notice;
+}
+byId("edit-rule").onclick=()=>{
+  draftRule=activeRule.slice(); playStateBeforeEdit=paused; paused=true;
+  gameView.hidden=true; editorView.hidden=false; renderDraft(); byId("edit-title").focus({preventScroll:true});
+};
+byId("cancel").onclick=()=>{
+  editorView.hidden=true; gameView.hidden=false; paused=playStateBeforeEdit;
+  lastMove=lastCheck=performance.now(); syncUI(); byId("edit-rule").focus();
+};
+document.querySelectorAll("[data-command]").forEach(button=>{
+  button.onclick=()=>{draftRule.push(button.dataset.command); renderDraft("Добавлена команда «"+commands[button.dataset.command]+"».");};
+});
+byId("restore").onclick=()=>{draftRule=["one"]; renderDraft("Исходное правило восстановлено.");};
+byId("run").onclick=()=>{
+  activeRule=draftRule.slice(); edited=!(activeRule.length===1 && activeRule[0]==="one");
+  editorView.hidden=true; gameView.hidden=false; freshRound(); board.focus({preventScroll:true});
+};
+const chartNodes=Array.from(document.querySelectorAll("[data-answer]"));
+function reveal(node,visible) {
+  node.querySelector("text").textContent=visible?node.dataset.answer:node.dataset.prompt;
+  node.setAttribute("aria-pressed",String(visible));
+}
+for (const node of chartNodes) {
+  reveal(node,false);
+  node.addEventListener("click",()=>reveal(node,node.getAttribute("aria-pressed")!=="true"));
+  node.addEventListener("keydown",event=>{
+    if (event.key==="Enter" || event.key===" ") {
+      event.preventDefault(); reveal(node,node.getAttribute("aria-pressed")!=="true");
+    }
+  });
+}
+byId("open-chart").onclick=()=>{
+  gameView.hidden=true; byId("chart-view").hidden=false; byId("chart-title").focus({preventScroll:true});
+};
+byId("close-chart").onclick=()=>{
+  byId("chart-view").hidden=true; gameView.hidden=false; lastMove=lastCheck=performance.now(); byId("open-chart").focus();
+};
+byId("chart-show").onclick=()=>chartNodes.forEach(node=>reveal(node,true));
+byId("chart-clear").onclick=()=>chartNodes.forEach(node=>reveal(node,false));
+byId("full").onclick=async()=>{
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+  catch { byId("full").textContent="На весь экран — клавиша F11"; }
+};
+document.addEventListener("fullscreenchange",()=>{byId("full").textContent=document.fullscreenElement?"Свернуть экран":"На весь экран";});
+freshRound(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
