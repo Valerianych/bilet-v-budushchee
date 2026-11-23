@@ -1,12 +1,265 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=./Игра%20для%20доски.html">
-  <title>Погоня за пиццей</title>
-</head>
-<body>
-  <p><a href="./Игра%20для%20доски.html">Запустить игру «Погоня за пиццей»</a></p>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#232137" />
+    <title>Пиксельная студия · Билет в будущее</title>
+    <link rel="stylesheet" href="studio.css" />
+  </head>
+  <body>
+    <svg aria-hidden="true" class="icons" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="i-pad" viewBox="0 0 24 24">
+        <path d="M5 7h14v2h2v10h-4v-3H7v3H3V9h2z" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M5 12h5m-2.5-2.5v5m7.5-1h2m1-3h2" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M6 3.8v16.4a.8.8 0 0 0 1.2.7l13-8.2a.8.8 0 0 0 0-1.4l-13-8.2a.8.8 0 0 0-1.2.7z"
+        />
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24">
+        <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M3 5c4-1 6-1 9 1 3-2 5-2 9-1v14c-4-1-6-1-9 1-3-2-5-2-9-1zM12 6v14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+        />
+      </symbol>
+      <symbol id="i-file" viewBox="0 0 24 24">
+        <path
+          d="M3 8V5h7l2 3h9v12H3z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" fill="none" stroke-width="2.2" />
+      </symbol>
+      <symbol id="i-block" viewBox="0 0 24 24">
+        <path
+          d="M3 6h5l2 2h4l2-2h5v12h-5l-2 2h-4l-2-2H3z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-flow" viewBox="0 0 24 24">
+        <path
+          d="m12 3 4 4-4 4-4-4zM12 11v3m0 0H5v3m7-3h7v3M2 17h6v4H2zm14 0h6v4h-6z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" />
+      </symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24">
+        <path
+          d="m5 15 10-10 4 4L9 19l-5 1zm8-8 4 4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24">
+        <path
+          d="M8 5 3 10l5 5M4 10h10a6 6 0 0 1 0 12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-max" viewBox="0 0 24 24">
+        <path
+          d="M3 9V3h6m6 0h6v6m0 6v6h-6M9 21H3v-6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+        />
+      </symbol>
+    </svg>
+    <header class="appbar">
+      <div class="brand">
+        <span class="brandmark"
+          ><svg><use href="#i-pad" /></svg
+        ></span>
+        <div>
+          <h1>Пиксельная студия</h1>
+          <span>Билет в будущее</span>
+        </div>
+      </div>
+      <div class="project-title">
+        <label for="project-name">Проект</label
+        ><input id="project-name" value="Моя игра" maxlength="48" autocomplete="off" />
+      </div>
+      <nav aria-label="Проект и запуск">
+        <button id="project-menu" class="top quiet">
+          <svg><use href="#i-file" /></svg><span>Проект</span>
+        </button>
+        <button id="open-lesson" class="top quiet">
+          <svg><use href="#i-book" /></svg><span>Урок</span>
+        </button>
+        <button id="play" class="top play">
+          <svg><use href="#i-play" /></svg><span>Играть</span>
+        </button>
+      </nav>
+    </header>
+    <main class="studio">
+      <aside class="left-column">
+        <section class="panel scene-panel" aria-label="Сцена игры">
+          <div class="panel-head">
+            <h2>Сцена</h2>
+            <div class="head-tools">
+              <span class="dimensions">12 × 8</span
+              ><button
+                id="stage-large"
+                class="icon"
+                aria-label="Развернуть сцену"
+                title="Развернуть сцену"
+              >
+                <svg><use href="#i-max" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="stage-wrap" id="stage-wrap">
+            <div class="stage-screen">
+              <canvas
+                id="stage"
+                width="192"
+                height="128"
+                tabindex="0"
+                aria-label="Сцена. В редакторе выберите спрайт и коснитесь клетки для размещения."
+              ></canvas>
+              <div id="stage-empty" class="stage-empty">
+                <button id="stage-add">Добавить первый спрайт</button>
+              </div>
+              <div id="end-screen" class="end-screen" hidden>
+                <strong id="end-title"></strong><span id="end-score"></span
+                ><button id="again">Ещё раз</button>
+              </div>
+            </div>
+            <div class="stage-status">
+              <span id="stage-mode">Редактор сцены</span
+              ><strong>Счёт <output id="score">0</output></strong>
+            </div>
+          </div>
+          <div id="editor-scene-tools" class="scene-tools">
+            <label for="background">Фон сцены</label
+            ><select id="background">
+              <option value="space">Космос</option>
+              <option value="woods">Лес</option>
+              <option value="sea">Океан</option>
+              <option value="dusk">Закат</option>
+            </select>
+          </div>
+          <div id="pad" class="pad" aria-label="Управление игрой" hidden>
+            <button data-key="left" aria-label="Влево">◀</button
+            ><button data-key="up" aria-label="Вверх">▲</button
+            ><button data-key="down" aria-label="Вниз">▼</button
+            ><button data-key="right" aria-label="Вправо">▶</button
+            ><button data-key="action">Действие</button>
+          </div>
+        </section>
+        <section class="panel sprite-panel">
+          <div class="panel-head">
+            <h2>Спрайты <span id="sprite-count" class="count">0</span></h2>
+            <button id="add-sprite" class="small accent">
+              <svg><use href="#i-plus" /></svg>Добавить спрайт
+            </button>
+          </div>
+          <div id="sprite-list" class="sprite-list"></div>
+          <div id="sprite-tools" class="sprite-tools" hidden>
+            <button id="edit-sprite" class="small">
+              <svg><use href="#i-pencil" /></svg>Редактировать</button
+            ><button id="remove-sprite" class="small text-button">Удалить</button
+            ><span id="position"></span>
+          </div>
+        </section>
+      </aside>
+      <section class="panel logic-panel" aria-label="Рабочая область">
+        <div class="logic-head">
+          <div class="tabs" role="tablist" aria-label="Вид программы">
+            <button
+              class="tab active"
+              role="tab"
+              id="tab-blocks"
+              aria-controls="blocks-pane"
+              aria-selected="true"
+            >
+              <svg><use href="#i-block" /></svg>Блоки
+            </button>
+            <button class="tab" role="tab" id="tab-flow" aria-controls="flow-pane" aria-selected="false">
+              <svg><use href="#i-flow" /></svg>Схема
+            </button>
+          </div>
+          <div class="head-tools">
+            <button
+              id="undo"
+              class="icon"
+              title="Отменить изменение блоков"
+              aria-label="Отменить изменение блоков"
+            >
+              <svg><use href="#i-undo" /></svg></button
+            ><button id="add-block" class="small block-add">
+              <svg><use href="#i-plus" /></svg>Добавить блок
+            </button>
+          </div>
+        </div>
+        <div id="blocks-pane" role="tabpanel" aria-labelledby="tab-blocks">
+          <div id="blockly"></div>
+          <div id="block-empty">
+            <div>
+              <svg><use href="#i-block" /></svg>
+              <h3>С чего начнётся игра?</h3>
+              <p>Перетащите событие из палитры или добавьте первый блок.</p>
+              <button id="first-event" class="hat-button">При старте игры</button>
+            </div>
+          </div>
+        </div>
+        <div id="flow-pane" role="tabpanel" aria-labelledby="tab-flow" hidden>
+          <div class="flow-select">
+            <label for="flow-event">Событие</label
+            ><select id="flow-event"></select>
+          </div>
+          <div id="flow-drawing"></div>
+        </div>
+        <div class="logic-foot">
+          <span id="workspace-status" role="status">Пустой проект</span
+          ><span id="save-state">Сохранение на устройстве</span>
+        </div>
+      </section>
+    </main>
+    <dialog id="dialog" aria-labelledby="dialog-title">
+      <form method="dialog" class="dialog-head">
+        <h2 id="dialog-title">Проект</h2>
+        <button class="icon" aria-label="Закрыть" title="Закрыть">
+          <svg><use href="#i-close" /></svg>
+        </button>
+      </form>
+      <div id="dialog-body"></div>
+    </dialog>
+    <input type="file" accept=".json,application/json" hidden id="import-file" />
+    <div id="toast" role="status" hidden></div>
+    <script src="vendor/blockly/blockly_compressed.js"></script>
+    <script src="vendor/blockly/msg/ru.js"></script>
+    <script src="art.js"></script>
+    <script src="engine.js"></script>
+    <script src="blocks.js"></script>
+    <script src="flow.js"></script>
+    <script src="sprite-editor.js"></script>
+    <script src="studio.js"></script>
+  </body>
 </html>
