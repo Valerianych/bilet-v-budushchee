@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10272b">
+    <title>Почему мы играем? Презентация для доски</title>
+    <link rel="stylesheet" href="show.css">
+    <script defer src="show.js"></script>
+  </head>
+  <body>
+    <main id="stage" aria-label="Презентация «Почему мы играем?»">
+      <figure id="frame">
+        <img id="slide" src="images/01.webp" alt="Почему мы играем? Дворовые, настольные и цифровые игры." width="1600" height="900">
+        <a id="studio-link" href="../index.html" aria-label="Открыть Пиксельную студию" hidden></a>
+      </figure>
+    </main>
+    <nav aria-label="Управление показом">
+      <div class="paging">
+        <button id="back" type="button" aria-label="Предыдущий слайд" disabled>← Назад</button>
+        <span id="number" role="status" aria-live="polite" aria-atomic="true" aria-label="Слайд 1 из 10">1 / 10</span>
+        <button id="forward" type="button" aria-label="Следующий слайд">Дальше →</button>
+      </div>
+      <div class="tools">
+        <button id="full" type="button">На весь экран</button>
+        <a href="why-we-play.pptx" download>Скачать PowerPoint</a>
+      </div>
+    </nav>
+    <noscript>Для показа в браузере включите JavaScript или скачайте файл PowerPoint.</noscript>
+  </body>
+</html>

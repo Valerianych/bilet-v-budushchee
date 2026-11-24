@@ -6,7 +6,8 @@
     dialog = $("dialog"),
     storageKey = "bilet.pixel.studio.v1";
   const lessonFiles = [
-    ["Лекция для ведущего · PDF", "pdf/Лекция%20для%20ведущего.pdf?v=igry"],
+    ["Презентация для доски", "slides/index.html"],
+    ["Лекция для ведущего · PDF", "pdf/Лекция%20для%20ведущего.pdf?v=igry-slides"],
     ["Конспект и рабочий лист · PDF", "pdf/Конспект%20и%20рабочий%20лист.pdf?v=studio"],
   ];
   const fresh = () => ({
