@@ -365,10 +365,15 @@
   });
   function stateForGame(info) {
     $("score").textContent = info.score;
+    $("lives-stat").hidden = info.lives === null;
+    $("time-stat").hidden = info.seconds === null;
+    if (info.lives !== null) $("lives").textContent = info.lives;
+    if (info.seconds !== null) $("seconds").textContent = info.seconds;
     $("end-screen").hidden = !info.result;
     if (info.result) {
-      $("end-title").textContent = info.result === "win" ? "Победа!" : "Поражение";
-      $("end-score").textContent = "Счёт " + info.score;
+      $("end-title").textContent = info.result === "error" ? "Проверьте блоки" :
+        info.result === "win" ? "Победа!" : "Поражение";
+      $("end-score").textContent = info.message || "Счёт " + info.score;
     }
   }
   function stopGame() {
@@ -382,8 +387,7 @@
     $("pad").hidden = true;
     $("editor-scene-tools").hidden = false;
     $("stage-mode").textContent = "Редактор сцены";
-    $("end-screen").hidden = true;
-    $("score").textContent = 0;
+    stateForGame({ score: 0, result: "", lives: null, seconds: null });
     refreshSprites();
   }
   function inspectRules() {
@@ -407,7 +411,7 @@
       .getAllBlocks(false)
       .find(
         (b) =>
-          (b.type === "evt_touch" || b.type === "chase") &&
+          ["evt_touch", "evt_separate", "if_touch", "chase"].includes(b.type) &&
           b.getFieldValue("A") === b.getFieldValue("B") &&
           StudioBlocks.byType[b.getRootBlock().type]?.group === 0,
       );
@@ -416,6 +420,17 @@
       same.select();
       blocks.ws.centerOnBlock(same.id);
       toast("В этом блоке нужны два разных спрайта.");
+      return null;
+    }
+    const unnamed = blocks.ws.getAllBlocks(false).find((b) =>
+      (b.type === "evt_signal" || b.type === "signal_send") &&
+      StudioBlocks.byType[b.getRootBlock().type]?.group === 0 && !b.getFieldValue("NAME").trim(),
+    );
+    if (unnamed) {
+      setTab("blocks");
+      unnamed.select();
+      blocks.ws.centerOnBlock(unnamed.id);
+      toast("Впишите название сигнала в выделенный блок.");
       return null;
     }
     return rules;
@@ -507,22 +522,53 @@
     sel.value = targets.some((t) => t.value === active) ? active : targets.at(-1)?.value || "";
     row.append(sel);
     body.append(row);
-    const groups = element("div", "block-catalog");
-    body.append(groups);
-    StudioBlocks.groups.forEach(([name, colour], index) => {
-      const section = element("section");
-      section.append(element("h3", "", name));
-      groups.append(section);
-      for (const s of StudioBlocks.specs.filter((s) => s.group === index)) {
-        const b = btn(s.title, "block-choice", () => {
-          dialog.close();
-          blocks.add(s.type, sel.value);
-        });
-        b.dataset.type = s.type;
-        b.style.backgroundColor = colour;
-        section.append(b);
+    const search = element("input", "block-search"),
+      filters = element("div", "group-tabs"),
+      groups = element("div", "block-catalog");
+    search.type = "search";
+    search.placeholder = "Найти блок";
+    search.setAttribute("aria-label", "Найти блок");
+    let filter = "all";
+    const sections = [
+      ...StudioBlocks.eventSets.map(([name, types]) => [name, types.map((t) => StudioBlocks.byType[t])]),
+      ...StudioBlocks.groups.slice(1).map(([name], i) =>
+        [name, StudioBlocks.specs.filter((s) => s.group === i + 1)]),
+    ];
+    const normalize = (s) => s.toLowerCase().replaceAll("ё", "е").trim();
+    function render() {
+      groups.replaceChildren();
+      const query = normalize(search.value);
+      for (const button of filters.children)
+        button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+      for (const [name, entries] of sections) {
+        const items = entries.filter((s) =>
+          (filter === "all" || (filter === "events") === (s.group === 0)) &&
+          normalize([s.title, s.message, StudioBlocks.hints[s.type]].join(" ")).includes(query));
+        if (!items.length) continue;
+        const section = element("section");
+        section.append(element("h3", "", name));
+        for (const s of items) {
+          const b = btn(s.title, "block-choice", () => {
+            dialog.close();
+            blocks.add(s.type, sel.value);
+          });
+          b.dataset.type = s.type;
+          b.style.backgroundColor = StudioBlocks.groups[s.group][1];
+          section.append(b);
+        }
+        groups.append(section);
       }
-    });
+      if (!groups.children.length)
+        groups.append(element("p", "muted", "Таких блоков не найдено. Попробуйте другое слово."));
+    }
+    for (const [value, label] of [["all", "Все"], ["events", "События"], ["commands", "Команды"]]) {
+      const button = btn(label, "group-pick", () => { filter = value; render(); });
+      button.dataset.filter = value;
+      filters.append(button);
+    }
+    search.oninput = render;
+    body.append(search, filters, groups);
+    render();
   }
   $("add-block").onclick = blockMenu;
   blocks.ws.addChangeListener((e) => {
@@ -583,7 +629,12 @@
       if (game) game.dispose();
       game = engine.play(data.model, data.rules, data.palette, canvas, (s) => {
         score.textContent = s.score;
-        status.textContent = s.result === "win" ? "Победа!" : s.result === "loss" ? "Поражение" : "";
+        for (const [id, value] of [["lives", s.lives], ["seconds", s.seconds]]) {
+          const out = document.getElementById(id);
+          out.parentElement.hidden = value === null;
+          if (value !== null) out.textContent = value;
+        }
+        status.textContent = s.message || (s.result === "win" ? "Победа!" : s.result === "loss" ? "Поражение" : "");
       });
     }
     document.getElementById("start").onclick = start;
@@ -610,7 +661,7 @@
     const html =
       '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Игра</title><style>' +
       css +
-      '</style><main><header><h1 id="title"></h1><b>Счёт <output id="score">0</output></b></header><canvas id="field" width="192" height="128" aria-label="Игровое поле"></canvas><footer><div id="pad"><button data-key="left" aria-label="Влево">◀</button><button data-key="up" aria-label="Вверх">▲</button><button data-key="down" aria-label="Вниз">▼</button><button data-key="right" aria-label="Вправо">▶</button><button data-key="action">Действие</button></div><b id="status"></b><button id="start">Сначала</button></footer><p>Используйте стрелки или коснитесь клетки. Кнопка «Действие» также работает по пробелу.</p></main><script>' +
+      '</style><main><header><h1 id="title"></h1><b>Счёт <output id="score">0</output></b><b hidden>Жизни <output id="lives">3</output></b><b hidden>Время <output id="seconds">0</output> с</b></header><canvas id="field" width="192" height="128" aria-label="Игровое поле"></canvas><footer><div id="pad"><button data-key="left" aria-label="Влево">◀</button><button data-key="up" aria-label="Вверх">▲</button><button data-key="down" aria-label="Вниз">▼</button><button data-key="right" aria-label="Вправо">▶</button><button data-key="action">Действие</button></div><b id="status" role="status"></b><button id="start">Сначала</button></footer><p>Используйте стрелки, нажимайте на поле и спрайты. Кнопка «Действие» также работает по пробелу.</p></main><script>' +
       createPixelEngine.toString() +
       "\n;(" +
       standalone.toString() +
@@ -618,6 +669,34 @@
       data +
       ");</script></html>";
     download(filename() + ".html", html, "text/html;charset=utf-8");
+  }
+  function examplesMenu() {
+    const body = open("Примеры игр"),
+      list = element("div", "examples-list");
+    for (const example of StudioExamples) {
+      const project = example.make();
+      const card = element("article", "example-card"),
+        art = element("div", "example-art"),
+        content = element("div", "example-content");
+      art.dataset.theme = project.background;
+      art.setAttribute("aria-hidden", "true");
+      for (const sp of project.sprites) art.append(SpriteEditor.thumbnail(sp.pixels, PixelArt.palette));
+      const load = () => {
+        applyProject(validProject(project));
+        blocks.ws.scroll(0, 0);
+      };
+      const pick = btn("Открыть «" + example.title + "»", "", () => {
+        if (model.sprites.length || blocks.count() || model.name !== "Моя игра" || model.background !== "space")
+          confirmAction("Открыть пример", "Заменить текущий проект игрой «" + example.title +
+            "»? Свою версию можно сначала скачать через меню «Проект».", "Открыть пример", load);
+        else { dialog.close(); load(); }
+      });
+      content.append(element("h3", "", example.title), element("p", "", example.description),
+        element("p", "example-events", example.events), pick);
+      card.append(art, content);
+      list.append(card);
+    }
+    body.append(list);
   }
   function projectMenu() {
     const body = open("Проект"),
@@ -635,6 +714,7 @@
       schedule();
     };
     list.append(
+      btn("Примеры игр", "", examplesMenu),
       btn("Скачать игру", "primary", () => {
         dialog.close();
         exportGame();
@@ -707,7 +787,7 @@
     [
       "Соберите условие победы",
       "Под переносом добавьте «Если счёт достиг цели». Укажите порог. Внутрь ветки «то» вставьте «Завершить игру» и выберите победу. Вкладка «Схема» покажет условие и обе ветки вашей игры.",
-      "Для усложнения добавьте третий спрайт. Новое событие касания с ним может завершать игру поражением.",
+      "Хотите ограничить раунд по времени? При старте добавьте «Запустить отсчёт». К событию «Время раунда истекло» присоедините «Завершить игру».",
     ],
     [
       "Испытайте и скачайте",
@@ -739,6 +819,7 @@
     act.append(
       prev,
       btn("К конструктору", "", () => dialog.close()),
+      btn("Примеры игр", "", examplesMenu),
     );
     if (guidePage < guide.length - 1)
       act.append(

@@ -70,15 +70,16 @@ window.drawStudioFlow = (host, rule) => {
     });
   }
   const box = 228;
+  const decisionHeight = (c) => 50 + (words(c.label, 18).length - 1) * 28;
   function measure(cmds) {
     let width = box,
       height = 0;
     for (const c of cmds) {
-      if (c.type === "if_score") {
+      if (c.yes) {
         const a = measure(c.yes),
           b = measure(c.no);
         width = Math.max(width, a.width + b.width + 34);
-        height += 80 + Math.max(a.height, b.height) + 30;
+        height += decisionHeight(c) + 26 + Math.max(a.height, b.height) + 30;
       } else height += Math.max(42, words(c.label).length * 16 + 16) + 23;
       if (c.type === "finish") break;
     }
@@ -104,20 +105,22 @@ window.drawStudioFlow = (host, rule) => {
     let alive = true;
     for (const c of cmds) {
       if (!alive) break;
-      if (c.type === "if_score") {
+      if (c.yes) {
         const a = measure(c.yes),
           b = measure(c.no),
           ax = x - (b.width + 34) / 2,
           bx = x + (a.width + 34) / 2;
-        const mid = y + 27,
-          bottom = y + 54,
-          start = y + 80;
+        const lines = words(c.label, 18),
+          h = decisionHeight(c),
+          mid = y + h / 2,
+          bottom = y + h,
+          start = bottom + 26;
         element("polygon", {
           points: [
             [x, y],
-            [x + 96, mid],
+            [x + 112, mid],
             [x, bottom],
-            [x - 96, mid],
+            [x - 112, mid],
           ]
             .map((p) => p.join(","))
             .join(" "),
@@ -125,14 +128,14 @@ window.drawStudioFlow = (host, rule) => {
           stroke: "#ac864f",
           "stroke-width": 1.5,
         });
-        label(x, mid + 4, [c.label]);
+        label(x, mid + 4 - (lines.length - 1) * 8, lines, 13);
         wire([
-          [x - 96, mid],
+          [x - 112, mid],
           [ax, mid],
           [ax, start],
         ]);
         wire([
-          [x + 96, mid],
+          [x + 112, mid],
           [bx, mid],
           [bx, start],
         ]);

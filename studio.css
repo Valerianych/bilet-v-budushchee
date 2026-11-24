@@ -294,6 +294,14 @@ button svg,
   justify-content: space-between;
   font-size: 14px;
   color: #d8d4e6;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+}
+.game-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font-variant-numeric: tabular-nums;
 }
 .stage-status strong {
   color: #e6ffc6;
@@ -666,8 +674,16 @@ dialog::backdrop {
 }
 .block-catalog {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 11px;
+}
+.block-search {
+  width: 100%;
+  margin-bottom: 9px;
+  min-height: 42px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 .block-catalog section {
   display: grid;
@@ -685,7 +701,7 @@ dialog::backdrop {
   line-height: 1.2;
   text-align: left;
   font-size: 15px;
-  min-height: 38px;
+  min-height: 42px;
 }
 .block-choice:hover {
   filter: brightness(1.12);
@@ -693,6 +709,41 @@ dialog::backdrop {
 .options-list {
   display: grid;
   gap: 9px;
+}
+.examples-list {
+  display: grid;
+  gap: 14px;
+}
+.example-card {
+  display: grid;
+  grid-template-columns: clamp(64px, 16%, 108px) 1fr;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.example-art {
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  background: #232645;
+}
+.example-art[data-theme="dusk"] {
+  background: #513650;
+}
+.example-art canvas {
+  width: 46px;
+  height: 46px;
+  image-rendering: pixelated;
+}
+.example-content {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  padding: 12px 14px;
+}
+.example-events {
+  color: var(--muted);
+  font-size: 14px;
 }
 .options-list button,
 .options-list a {

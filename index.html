@@ -152,8 +152,12 @@
               </div>
             </div>
             <div class="stage-status">
-              <span id="stage-mode">Редактор сцены</span
-              ><strong>Счёт <output id="score">0</output></strong>
+              <span id="stage-mode">Редактор сцены</span>
+              <div class="game-stats">
+                <strong>Счёт <output id="score">0</output></strong>
+                <strong id="lives-stat" hidden>Жизни <output id="lives">3</output></strong>
+                <strong id="time-stat" hidden>Время <output id="seconds">0</output> с</strong>
+              </div>
             </div>
           </div>
           <div id="editor-scene-tools" class="scene-tools">
@@ -256,6 +260,7 @@
     <script src="vendor/blockly/blockly_compressed.js"></script>
     <script src="vendor/blockly/msg/ru.js"></script>
     <script src="art.js"></script>
+    <script src="examples.js"></script>
     <script src="engine.js"></script>
     <script src="blocks.js"></script>
     <script src="flow.js"></script>

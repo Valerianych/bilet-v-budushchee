@@ -6,6 +6,7 @@ window.StudioBlocks = (() => {
     ["Спрайты", "#087e76"],
     ["Счёт", "#a35421"],
     ["Логика", "#6953b6"],
+    ["Время и жизни", "#a13e5c"],
   ];
   const actor = (name) => ({ type: "field_studio_actor", name });
   const num = (name, value, min, max, precision = 1) => ({
@@ -17,6 +18,16 @@ window.StudioBlocks = (() => {
     precision,
   });
   const choice = (name, options) => ({ type: "field_dropdown", name, options });
+  const keys = [
+    ["действия", "action"], ["влево", "left"], ["вправо", "right"],
+    ["вверх", "up"], ["вниз", "down"],
+  ];
+  const compare = () => choice("OP", [["≥", "ge"], ["=", "eq"], ["<", "lt"]]);
+  const signal = () => ({ type: "field_input", name: "NAME", text: "новый уровень" });
+  const sides = [
+    ["любого края", "any"], ["левого края", "left"], ["правого края", "right"],
+    ["верхнего края", "top"], ["нижнего края", "bottom"],
+  ];
   const themes = [
     ["Космос", "space"],
     ["Лес", "woods"],
@@ -26,22 +37,18 @@ window.StudioBlocks = (() => {
   const specs = [
     ["evt_start", 0, "При старте игры", "при старте игры", []],
     ["evt_touch", 0, "Касание двух спрайтов", "когда %1 касается %2", [actor("A"), actor("B")]],
-    [
-      "evt_key",
-      0,
-      "Нажатие кнопки",
-      "при нажатии %1",
-      [
-        choice("KEY", [
-          ["действия", "action"],
-          ["влево", "left"],
-          ["вправо", "right"],
-          ["вверх", "up"],
-          ["вниз", "down"],
-        ]),
-      ],
-    ],
+    ["evt_key", 0, "Нажатие кнопки", "при нажатии кнопки %1", [choice("KEY", keys)]],
     ["evt_every", 0, "По таймеру", "каждые %1 сек.", [num("SEC", 2, 0.1, 120, 0.1)]],
+    ["evt_after", 0, "Через время от старта", "через %1 сек. от старта", [num("SEC", 3, 0.1, 600, 0.1)]],
+    ["evt_timer_end", 0, "Время раунда истекло", "когда время раунда истекло", []],
+    ["evt_key_up", 0, "Отпускание кнопки", "при отпускании кнопки %1", [choice("KEY", keys)]],
+    ["evt_tap", 0, "Касание спрайта пальцем", "когда игрок нажал на %1", [actor("A")]],
+    ["evt_separate", 0, "Спрайты разошлись", "когда %1 перестал касаться %2", [actor("A"), actor("B")]],
+    ["evt_edge", 0, "Спрайт коснулся края", "когда %1 касается %2", [actor("A"), choice("SIDE", sides)]],
+    ["evt_cell", 0, "Вход в клетку", "когда %1 в клетке X %2 Y %3", [actor("A"), num("X", 5, 0, 11), num("Y", 3, 0, 7)]],
+    ["evt_score", 0, "Счёт достиг цели", "когда счёт достиг %1", [num("N", 5, -9999, 9999)]],
+    ["evt_no_lives", 0, "Кончились жизни", "когда кончились жизни", []],
+    ["evt_signal", 0, "Получен сигнал", "при сигнале «%1»", [signal()]],
     [
       "control",
       1,
@@ -70,6 +77,8 @@ window.StudioBlocks = (() => {
       "%1 догоняет %2 · скорость %3",
       [actor("A"), actor("B"), num("SPEED", 2, 1, 20)],
     ],
+    ["velocity", 1, "Задать скорость по осям", "скорость %1 по X %2 по Y %3", [actor("A"), num("VX", 3, -20, 20, 0.1), num("VY", 2, -20, 20, 0.1)]],
+    ["bounce", 1, "Отскочить от края", "отразить скорость %1 от края", [actor("A")]],
     ["teleport", 2, "Перенести в свободную клетку", "перенести %1 в свободную клетку", [actor("A")]],
     [
       "visible",
@@ -87,17 +96,21 @@ window.StudioBlocks = (() => {
     ["background", 2, "Изменить фон сцены", "установить фон %1", [choice("THEME", themes)]],
     ["score_add", 3, "Изменить счёт", "изменить счёт на %1", [num("N", 1, -999, 999)]],
     ["score_set", 3, "Задать счёт", "установить счёт %1", [num("N", 0, -9999, 9999)]],
+    ["life_set", 5, "Задать число жизней", "установить жизни %1", [num("N", 3, 0, 999)]],
+    ["life_add", 5, "Изменить число жизней", "изменить жизни на %1", [num("N", -1, -999, 999)]],
+    ["timer_start", 5, "Запустить отсчёт", "запустить отсчёт на %1 сек.", [num("SEC", 20, 0.1, 3600, 0.1)]],
+    ["timer_add", 5, "Изменить оставшееся время", "изменить время на %1 сек.", [num("SEC", 5, -3600, 3600, 0.1)]],
+    ["signal_send", 4, "Послать сигнал", "послать сигнал «%1»", [signal()]],
+    ["if_lives", 4, "Если осталось жизней", "если жизни %1 %2", [compare(), num("N", 1, 0, 999)]],
+    ["if_touch", 4, "Если спрайты касаются", "если %1 касается %2", [actor("A"), actor("B")]],
+    ["if_key", 4, "Если кнопка нажата", "если нажата кнопка %1", [choice("KEY", keys)]],
     [
       "if_score",
       4,
       "Если счёт достиг цели",
       "если счёт %1 %2",
       [
-        choice("OP", [
-          ["≥", "ge"],
-          ["=", "eq"],
-          ["<", "lt"],
-        ]),
+        compare(),
         num("N", 3, -9999, 9999),
       ],
     ],
@@ -115,6 +128,30 @@ window.StudioBlocks = (() => {
     ],
   ].map(([type, group, title, message, args]) => ({ type, group, title, message, args }));
   const byType = Object.fromEntries(specs.map((s) => [s.type, s]));
+  const eventSets = [
+    ["Игра и время", ["evt_start", "evt_every", "evt_after", "evt_timer_end"]],
+    ["Управление", ["evt_key", "evt_key_up", "evt_tap"]],
+    ["На сцене", ["evt_touch", "evt_separate", "evt_edge", "evt_cell"]],
+    ["Очки, жизни и сигналы", ["evt_score", "evt_no_lives", "evt_signal"]],
+  ];
+  const hints = {
+    evt_every: "Повторяет команды через одинаковые промежутки времени.",
+    evt_after: "Выполняет команды один раз за игру, когда проходит указанное время.",
+    evt_timer_end: "Срабатывает, когда таймер раунда доходит до нуля. Включите его блоком «Запустить отсчёт».",
+    evt_key_up: "Реагирует на отпускание клавиши или экранной кнопки.",
+    evt_tap: "Нажмите на спрайт пальцем или мышью. Если спрайты перекрываются, нажатие получит верхний.",
+    evt_edge: "Срабатывает при первом касании указанного края и при каждом возвращении к нему.",
+    evt_cell: "Срабатывает, когда центр спрайта попадает в клетку. Сверху слева находится клетка X 0 Y 0.",
+    evt_separate: "Срабатывает после касания, когда спрайты разошлись или один из них скрыли.",
+    evt_score: "Срабатывает, когда счёт поднимается с меньшего значения до цели или выше.",
+    evt_no_lives: "Срабатывает, когда число жизней опускается до нуля.",
+    evt_signal: "Выполняет команды при получении сигнала с этим названием.",
+    signal_send: "Назовите сигнал и добавьте событие «Получен сигнал» с таким же именем.",
+    velocity: "Скорость задаётся в клетках в секунду. Положительный X ведёт вправо, положительный Y вниз.",
+    bounce: "Меняет направление скорости, заданной по осям. Присоедините к событию касания края.",
+    timer_start: "Включает таймер раунда или начинает новый отсчёт с указанного времени.",
+    timer_add: "Меняет оставшееся время на таймере. Отрицательное число сокращает раунд.",
+  };
   function create(host, getSprites, changed) {
     const choices = () => [["выберите спрайт", "NONE"], ...getSprites().map((s) => [s.name, s.id])];
     class ActorField extends Blockly.FieldDropdown {
@@ -134,9 +171,10 @@ window.StudioBlocks = (() => {
         style: "studio_group_" + s.group,
         nextStatement: null,
         inputsInline: true,
+        tooltip: hints[s.type] || s.title,
       };
       if (s.group !== 0) d.previousStatement = null;
-      if (s.type === "if_score") {
+      if (s.type.startsWith("if_")) {
         d.message1 = "то %1";
         d.args1 = [{ type: "input_statement", name: "YES" }];
         d.message2 = "иначе %1";
@@ -151,7 +189,12 @@ window.StudioBlocks = (() => {
         kind: "category",
         name,
         colour,
-        contents: specs.filter((s) => s.group === i).map((s) => ({ kind: "block", type: s.type })),
+        contents: i === 0
+          ? eventSets.flatMap(([text, types]) => [
+              { kind: "label", text },
+              ...types.map((type) => ({ kind: "block", type })),
+            ])
+          : specs.filter((s) => s.group === i).map((s) => ({ kind: "block", type: s.type })),
       })),
     };
     const shades = [
@@ -160,6 +203,7 @@ window.StudioBlocks = (() => {
       ["#07665e", "#075a54"],
       ["#88451a", "#733810"],
       ["#594798", "#493980"],
+      ["#87334c", "#6f283e"],
     ];
     const blockStyles = Object.fromEntries(
       groups.map((g, i) => [
@@ -266,7 +310,7 @@ window.StudioBlocks = (() => {
         label: label(b),
         fields: Object.fromEntries(s.args.map((f) => [f.name, b.getFieldValue(f.name)])),
       };
-      if (b.type === "if_score") {
+      if (b.getInput("YES")) {
         c.yes = chain(b.getInputTargetBlock("YES"));
         c.no = chain(b.getInputTargetBlock("NO"));
       }
@@ -287,7 +331,7 @@ window.StudioBlocks = (() => {
       const list = [];
       for (const b of ws.getAllBlocks(true)) {
         if (byType[b.type]?.group === 0) list.push({ value: b.id + "|next", label: label(b) });
-        if (b.type === "if_score") {
+        if (b.getInput("YES")) {
           list.push({ value: b.id + "|YES", label: label(b) + " — то" });
           list.push({ value: b.id + "|NO", label: label(b) + " — иначе" });
         }
@@ -297,10 +341,10 @@ window.StudioBlocks = (() => {
     function currentTarget() {
       let b = ws.getBlockById(anchor || "");
       if (!b) return "";
-      if (b.type === "if_score") return b.id + "|YES";
+      if (b.getInput("YES")) return b.id + "|YES";
       while (b.getParent()) {
         const parent = b.getParent();
-        if (parent.type === "if_score") {
+        if (parent.getInput("YES")) {
           for (const side of ["YES", "NO"])
             if (parent.getInputTargetBlock(side) === b) return parent.id + "|" + side;
         }
@@ -367,5 +411,5 @@ window.StudioBlocks = (() => {
       count: () => ws.getAllBlocks(false).length,
     };
   }
-  return { create, specs, groups, themes, byType };
+  return { create, specs, groups, themes, byType, eventSets, hints };
 })();

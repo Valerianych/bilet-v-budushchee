@@ -85,21 +85,130 @@ function createPixelEngine() {
   }
   const clamp = (n, max) => Math.max(0, Math.min(max, n));
   function play(model, rules, palette, canvas, onStatus) {
-    const sprites = model.sprites.map((sp) => ({ ...sp, visible: true, control: 0, follow: null }));
+    const sprites = model.sprites.map((sp) => ({
+      ...sp, visible: true, control: 0, follow: null, vx: 0, vy: 0,
+    }));
     const actors = new Map(sprites.map((sp) => [sp.id, sp]));
     const scene = { background: model.background, sprites };
-    const pressed = new Set(),
-      timers = new Map(),
-      touching = new Set();
+    const pressed = new Set();
+    const handlers = new Map();
+    for (const rule of rules) {
+      if (!handlers.has(rule.type)) handlers.set(rule.type, []);
+      handlers.get(rule.type).push(rule);
+    }
+    const spatialRules = rules.filter((r) =>
+      ["evt_touch", "evt_separate", "evt_edge", "evt_cell"].includes(r.type),
+    );
+    const spatialState = new Map();
+    const startTime = performance.now();
+    const timedRules = rules
+      .filter((r) => r.type === "evt_every" || r.type === "evt_after")
+      .map((rule) => {
+        const period = Math.max(0.1, Number(rule.fields.SEC)) * 1000;
+        return { rule, period, due: startTime + period };
+      });
+    const queue = [];
+    const edgeBits = { left: 1, right: 2, top: 4, bottom: 8, any: 15 };
+    function usesLives(commands) {
+      return commands.some((c) => c.type === "if_lives" || c.type === "life_add" || c.type === "life_set" ||
+        (c.yes && (usesLives(c.yes) || usesLives(c.no))));
+    }
+    const showLives = handlers.has("evt_no_lives") || rules.some((r) => usesLives(r.body));
     let score = 0,
+      lives = 3,
+      countdownStarted = false,
+      deadline = null,
       result = "",
+      message = "",
+      lastStatus = "",
       disposed = false,
       frameId,
-      previous = performance.now(),
+      previous = startTime,
       destination = null;
     function updateStatus() {
-      onStatus({ score, result });
+      const seconds = countdownStarted ? Math.ceil(timeLeft() / 1000) : null;
+      const info = { score, lives: showLives ? lives : null, seconds, result, message };
+      const signature = JSON.stringify(info);
+      if (signature !== lastStatus) {
+        lastStatus = signature;
+        onStatus(info);
+      }
     }
+    function emit(type, test) {
+      for (const rule of handlers.get(type) || []) {
+        if (result) break;
+        if (!test || test(rule.fields)) enqueue(rule);
+      }
+    }
+    function enqueue(rule) {
+      if (queue.length < 2048) queue.push(rule);
+      else {
+        result = "error";
+        message = "Слишком много событий подряд. Проверьте, какие правила запускают друг друга.";
+      }
+    }
+    function flush() {
+      // Events raised by a command run after the current chain has finished.
+      for (let i = 0; i < queue.length && !result; i++) {
+        run(queue[i].body);
+      }
+      queue.length = 0;
+    }
+    function timeLeft() {
+      return deadline === null ? 0 : Math.max(0, deadline - performance.now());
+    }
+    function setCountdown(ms) {
+      countdownStarted = true;
+      if (ms > 0) deadline = performance.now() + ms;
+      else if (deadline !== null) {
+        deadline = null;
+        emit("evt_timer_end");
+      }
+    }
+    function setScore(next) {
+      const before = score;
+      score = next;
+      emit("evt_score", (f) => before < Number(f.N) && score >= Number(f.N));
+    }
+    function setLives(next) {
+      const before = lives;
+      lives = Math.max(0, next);
+      if (before > 0 && lives === 0) emit("evt_no_lives");
+    }
+    function touching(a, b) {
+      return Boolean(a && b && a !== b && a.visible && b.visible &&
+        Math.abs(a.x - b.x) < 0.72 && Math.abs(a.y - b.y) < 0.72);
+    }
+    function edges(a) {
+      if (!a || !a.visible) return 0;
+      const epsilon = 1e-8;
+      return (a.x <= epsilon ? edgeBits.left : 0) | (a.x >= cols - 1 - epsilon ? edgeBits.right : 0) |
+        (a.y <= epsilon ? edgeBits.top : 0) | (a.y >= rows - 1 - epsilon ? edgeBits.bottom : 0);
+    }
+    function sampleScene() {
+      for (const rule of spatialRules) {
+        const f = rule.fields, a = actors.get(f.A);
+        const before = spatialState.get(rule) || 0;
+        let current;
+        if (rule.type === "evt_edge") current = edges(a) & edgeBits[f.SIDE];
+        else if (rule.type === "evt_cell")
+          current = Number(Boolean(a?.visible && Math.round(a.x) === Number(f.X) && Math.round(a.y) === Number(f.Y)));
+        else current = Number(touching(a, actors.get(f.B)));
+        spatialState.set(rule, current);
+        const triggered = rule.type === "evt_separate" ? before && !current : current & ~before;
+        if (triggered) enqueue(rule);
+      }
+    }
+    function bounce(a) {
+      const mask = edges(a);
+      if (((mask & edgeBits.left) && a.vx < 0) || ((mask & edgeBits.right) && a.vx > 0)) a.vx *= -1;
+      if (((mask & edgeBits.top) && a.vy < 0) || ((mask & edgeBits.bottom) && a.vy > 0)) a.vy *= -1;
+    }
+    function compare(value, fields) {
+      const n = Number(fields.N);
+      return fields.OP === "eq" ? value === n : fields.OP === "lt" ? value < n : value >= n;
+    }
+    const signalName = (s) => String(s || "").trim().toLowerCase();
     function moveBy(actor, dx, dy) {
       actor.x = clamp(actor.x + dx, cols - 1);
       actor.y = clamp(actor.y + dy, rows - 1);
@@ -142,6 +251,15 @@ function createPixelEngine() {
           case "chase":
             if (a && b && a !== b) a.follow = { target: b, speed: Number(f.SPEED) };
             break;
+          case "velocity":
+            if (a) {
+              a.vx = Number(f.VX);
+              a.vy = Number(f.VY);
+            }
+            break;
+          case "bounce":
+            if (a) bounce(a);
+            break;
           case "move":
             if (a) moveBy(a, Number(f.X), Number(f.Y));
             break;
@@ -161,103 +279,146 @@ function createPixelEngine() {
             scene.background = f.THEME;
             break;
           case "score_add":
-            score += Number(f.N);
-            updateStatus();
+            setScore(score + Number(f.N));
             break;
           case "score_set":
-            score = Number(f.N);
-            updateStatus();
+            setScore(Number(f.N));
             break;
-          case "if_score": {
-            const n = Number(f.N);
-            const yes = f.OP === "eq" ? score === n : f.OP === "lt" ? score < n : score >= n;
-            run(yes ? cmd.yes : cmd.no);
+          case "life_set":
+            setLives(Number(f.N));
+            break;
+          case "life_add":
+            setLives(lives + Number(f.N));
+            break;
+          case "timer_start":
+            setCountdown(Number(f.SEC) * 1000);
+            break;
+          case "timer_add":
+            if (countdownStarted) setCountdown(timeLeft() + Number(f.SEC) * 1000);
+            break;
+          case "signal_send": {
+            const name = signalName(f.NAME);
+            if (name) emit("evt_signal", (fields) => signalName(fields.NAME) === name);
             break;
           }
+          case "if_score":
+            run(compare(score, f) ? cmd.yes : cmd.no);
+            break;
+          case "if_lives":
+            run(compare(lives, f) ? cmd.yes : cmd.no);
+            break;
+          case "if_touch":
+            run(touching(a, b) ? cmd.yes : cmd.no);
+            break;
+          case "if_key":
+            run(pressed.has(f.KEY) ? cmd.yes : cmd.no);
+            break;
           case "finish":
             result = f.RESULT === "loss" ? "loss" : "win";
-            updateStatus();
             break;
         }
       }
     }
+    function advanceClocks(now) {
+      for (const timer of timedRules) {
+        if (now < timer.due) continue;
+        enqueue(timer.rule);
+        timer.due = timer.rule.type === "evt_after" ? Infinity :
+          timer.due + (Math.floor((now - timer.due) / timer.period) + 1) * timer.period;
+      }
+      if (deadline !== null && now >= deadline) setCountdown(0);
+      flush();
+    }
     function frame(now) {
-      if (disposed) return;
-      const dt = Math.min((now - previous) / 1000, 0.09);
+      if (disposed || result) return;
+      const elapsed = Math.max(0, Math.min((now - previous) / 1000, 0.12));
       previous = now;
-      if (!result) {
-        const dx = Number(pressed.has("right")) - Number(pressed.has("left"));
-        const dy = Number(pressed.has("down")) - Number(pressed.has("up"));
+      advanceClocks(now);
+      const dx = Number(pressed.has("right")) - Number(pressed.has("left"));
+      const dy = Number(pressed.has("down")) - Number(pressed.has("up"));
+      const steps = Math.max(1, Math.ceil(elapsed * 60));
+      const dt = elapsed / steps;
+      for (let i = 0; i < steps && !result; i++) {
         for (const actor of sprites) {
-          if (actor.control && actor.visible) {
+          if (!actor.visible) continue;
+          if (actor.vx || actor.vy) moveBy(actor, actor.vx * dt, actor.vy * dt);
+          if (actor.control) {
             if (dx || dy) {
               const len = Math.hypot(dx, dy);
               moveBy(actor, (dx / len) * actor.control * dt, (dy / len) * actor.control * dt);
             } else if (destination) approach(actor, destination.x, destination.y, actor.control * dt);
           }
-          if (actor.follow && actor.visible && actor.follow.target.visible)
+          if (actor.follow && actor.follow.target.visible)
             approach(actor, actor.follow.target.x, actor.follow.target.y, actor.follow.speed * dt);
         }
-        for (const rule of rules) {
-          if (result) break;
-          if (rule.type === "evt_every") {
-            const elapsed = (timers.get(rule) || 0) + dt;
-            const delay = Math.max(0.1, Number(rule.fields.SEC));
-            if (elapsed >= delay) {
-              timers.set(rule, elapsed % delay);
-              run(rule.body);
-            } else timers.set(rule, elapsed);
-          } else if (rule.type === "evt_touch") {
-            const a = actors.get(rule.fields.A),
-              b = actors.get(rule.fields.B);
-            const hit =
-              a &&
-              b &&
-              a !== b &&
-              a.visible &&
-              b.visible &&
-              Math.abs(a.x - b.x) < 0.72 &&
-              Math.abs(a.y - b.y) < 0.72;
-            if (hit && !touching.has(rule)) {
-              touching.add(rule);
-              run(rule.body);
-            }
-            if (!hit) touching.delete(rule);
-          }
-        }
+        sampleScene();
+        flush();
       }
       draw(canvas, scene, palette, null, false);
+      updateStatus();
       if (!result) frameId = requestAnimationFrame(frame);
     }
-    function key(key, down) {
-      if (!down) {
-        pressed.delete(key);
-        return;
-      }
-      if (result || pressed.has(key)) return;
-      pressed.add(key);
-      if (key !== "action") destination = null;
-      for (const rule of rules) if (rule.type === "evt_key" && rule.fields.KEY === key) run(rule.body);
+    function finishInput() {
+      flush();
+      draw(canvas, scene, palette, null, false);
+      updateStatus();
     }
-    function point(x, y) {
-      if (!result) destination = { x: clamp(x, cols - 1), y: clamp(y, rows - 1) };
+    function acceptInput() {
+      if (disposed || result) return false;
+      advanceClocks(performance.now());
+      if (result) finishInput();
+      return !result;
+    }
+    function key(key, down) {
+      if (!acceptInput()) return;
+      if (down) {
+        if (pressed.has(key)) return;
+        pressed.add(key);
+        if (key !== "action") destination = null;
+      } else if (!pressed.delete(key)) return;
+      emit(down ? "evt_key" : "evt_key_up", (f) => f.KEY === key);
+      finishInput();
+    }
+    function point(x, y, sceneX = x + 0.5, sceneY = y + 0.5) {
+      if (!acceptInput()) return;
+      destination = { x: clamp(x, cols - 1), y: clamp(y, rows - 1) };
+      for (let i = sprites.length - 1; i >= 0; i--) {
+        const a = sprites[i];
+        if (a.visible && sceneX >= a.x && sceneX < a.x + 1 && sceneY >= a.y && sceneY < a.y + 1) {
+          emit("evt_tap", (f) => f.A === a.id);
+          break;
+        }
+      }
+      finishInput();
     }
     function dispose() {
       disposed = true;
       cancelAnimationFrame(frameId);
       pressed.clear();
     }
+    emit("evt_start");
+    flush();
+    if (!result) {
+      sampleScene();
+      flush();
+    }
     updateStatus();
-    for (const rule of rules) if (rule.type === "evt_start") run(rule.body);
     draw(canvas, scene, palette, null, false);
-    frameId = requestAnimationFrame(frame);
-    return { key, point, dispose, clearKeys: () => pressed.clear() };
+    if (!result) frameId = requestAnimationFrame(frame);
+    function clearKeys() {
+      for (const held of [...pressed]) key(held, false);
+      pressed.clear();
+    }
+    return { key, point, dispose, clearKeys };
   }
   function cellAt(canvas, event) {
     const b = canvas.getBoundingClientRect();
+    const sceneX = ((event.clientX - b.left) / b.width) * cols;
+    const sceneY = ((event.clientY - b.top) / b.height) * rows;
     return {
-      x: clamp(Math.floor(((event.clientX - b.left) / b.width) * cols), cols - 1),
-      y: clamp(Math.floor(((event.clientY - b.top) / b.height) * rows), rows - 1),
+      sceneX, sceneY,
+      x: clamp(Math.floor(sceneX), cols - 1),
+      y: clamp(Math.floor(sceneY), rows - 1),
     };
   }
   function bindInput(canvas, getGame, pad, allowKeyboard = () => true) {
@@ -279,8 +440,12 @@ function createPixelEngine() {
     const keyboard = (e, down) => {
       const game = getGame(),
         key = keys[e.key];
-      if (!game || !key || !allowKeyboard() || e.altKey || e.metaKey || e.ctrlKey) return;
-      if (down && e.target.closest?.("input,textarea,select,[contenteditable=true]")) return;
+      if (!game || !key) return;
+      if (!allowKeyboard() || e.altKey || e.metaKey || e.ctrlKey ||
+        e.target.closest?.("input,textarea,select,[contenteditable=true]")) {
+        if (!down) game.key(key, false);
+        return;
+      }
       e.preventDefault();
       game.key(key, down);
     };
@@ -292,7 +457,7 @@ function createPixelEngine() {
       if (!game) return;
       e.preventDefault();
       const p = cellAt(canvas, e);
-      game.point(p.x, p.y);
+      game.point(p.x, p.y, p.sceneX, p.sceneY);
     });
     if (pad)
       pad.querySelectorAll("[data-key]").forEach((b) => {
