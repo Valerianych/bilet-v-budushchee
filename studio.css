@@ -765,6 +765,11 @@ dialog::backdrop {
 .guide .actions {
   justify-content: space-between;
 }
+.guide-files {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
 .guide a,
 .options-list a {
   color: #51369a;

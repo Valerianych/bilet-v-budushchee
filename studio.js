@@ -5,7 +5,10 @@
     canvas = $("stage"),
     dialog = $("dialog"),
     storageKey = "bilet.pixel.studio.v1";
-  const pdf = "pdf/Конспект%20и%20рабочий%20лист.pdf?v=studio";
+  const lessonFiles = [
+    ["Лекция для ведущего · PDF", "pdf/Лекция%20для%20ведущего.pdf"],
+    ["Конспект и рабочий лист · PDF", "pdf/Конспект%20и%20рабочий%20лист.pdf?v=studio"],
+  ];
   const fresh = () => ({
     format: "bilet-pixel-studio",
     version: 1,
@@ -805,11 +808,15 @@
       element("p", "", item[1]),
       element("p", "muted", item[2]),
     );
-    const a = element("a", "", "Конспект и рабочий лист · PDF");
-    a.href = pdf;
-    a.target = "_blank";
-    a.rel = "noopener";
-    g.append(a);
+    const files = element("div", "guide-files");
+    for (const [label, url] of lessonFiles) {
+      const link = element("a", "", label);
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      files.append(link);
+    }
+    g.append(files);
     const act = element("div", "actions"),
       prev = btn("Назад", "", () => {
         guidePage--;
