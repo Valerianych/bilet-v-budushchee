@@ -697,6 +697,13 @@
       });
       content.append(element("h3", "", example.title), element("p", "", example.description),
         element("p", "example-events", example.events), pick);
+      if (example.blocksImage) {
+        const imageLink = element("a", "", "Картинка с готовыми блоками");
+        imageLink.href = example.blocksImage;
+        imageLink.target = "_blank";
+        imageLink.rel = "noopener";
+        content.append(imageLink);
+      }
       card.append(art, content);
       list.append(card);
     }

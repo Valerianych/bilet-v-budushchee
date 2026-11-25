@@ -33,6 +33,25 @@
     };
   }
 
+  function makeIskra() {
+    const hero = sprite("robot", "iskra", "Искра", 2, 4);
+    const crystal = sprite("crystal", "crystal", "Кристалл", 7, 4);
+    const goal = block("ik-goal", "if_score", { OP: "ge", N: 3 });
+    goal.inputs = { YES: { block: block("ik-win", "finish", { RESULT: "win" }) } };
+    return project("Искра и кристаллы", "space", [hero, crystal], [
+      script(32, 32,
+        block("ik-start", "evt_start"),
+        block("ik-control", "control", { A: hero.id, SPEED: 4 }),
+      ),
+      script(32, 180,
+        block("ik-collect", "evt_touch", { A: hero.id, B: crystal.id }),
+        block("ik-point", "score_add", { N: 1 }),
+        block("ik-relocate", "teleport", { A: crystal.id }),
+        goal,
+      ),
+    ]);
+  }
+
   function makeRicochet() {
     const hero = sprite("ship", "ship", "Корабль", 2, 5);
     const ball = sprite("meteor", "ball", "Огненный шар", 8, 1);
@@ -93,6 +112,14 @@
   }
 
   window.StudioExamples = [
+    {
+      id: "iskra",
+      title: "Искра и кристаллы",
+      description: "Коснись клетки на поле или веди робота стрелками. Собери три кристалла, чтобы победить.",
+      events: "Управление, касание и проверка счёта",
+      blocksImage: "examples/iskra-blocks.png",
+      make: makeIskra,
+    },
     {
       id: "ricochet",
       title: "Рикошет",
